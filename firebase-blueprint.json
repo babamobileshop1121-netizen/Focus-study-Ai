@@ -1,0 +1,255 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "User study statistics, streak, and profile information",
+      "type": "object",
+      "properties": {
+        "userId": {
+          "type": "string",
+          "description": "Firebase Auth UID of the user"
+        },
+        "displayName": {
+          "type": "string",
+          "description": "User's display name"
+        },
+        "email": {
+          "type": "string",
+          "description": "User's email address"
+        },
+        "photoUrl": {
+          "type": "string",
+          "description": "Optional avatar URL"
+        },
+        "streakDays": {
+          "type": "integer",
+          "description": "Consecutive days of active studying"
+        },
+        "totalFocusMinutes": {
+          "type": "integer",
+          "description": "Cumulative minutes spent in Focus Lock"
+        },
+        "totalQuizzesTaken": {
+          "type": "integer",
+          "description": "Total number of completed quizzes"
+        },
+        "averageQuizScore": {
+          "type": "integer",
+          "description": "Average quiz percentage (0-100)"
+        },
+        "lastActiveDate": {
+          "type": "string",
+          "description": "Date of last study session in YYYY-MM-DD"
+        },
+        "coins": {
+          "type": "integer",
+          "description": "Reward coins earned from completing study blocks, daily streaks, referrals, and ads"
+        },
+        "referralCode": {
+          "type": "string",
+          "description": "Unique referral code for sharing with friends"
+        },
+        "unlockedItems": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "IDs of in-app items and perks unlocked with coins"
+        },
+        "referredUsersCount": {
+          "type": "integer",
+          "description": "Number of friends referred"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of account registration"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Server timestamp of last profile update"
+        }
+      },
+      "required": ["userId", "displayName", "email", "streakDays", "totalFocusMinutes", "totalQuizzesTaken", "averageQuizScore", "lastActiveDate", "createdAt", "updatedAt"]
+    },
+    "StudySession": {
+      "title": "StudySession",
+      "description": "A scheduled study or revision session in the timetable",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique session ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of owner"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Study subject (e.g. Mathematics, Physics, Biology)"
+        },
+        "chapter": {
+          "type": "string",
+          "description": "Chapter or topic description"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "description": "Target date in YYYY-MM-DD"
+        },
+        "scheduledTime": {
+          "type": "string",
+          "description": "Target start time in HH:mm"
+        },
+        "durationMinutes": {
+          "type": "integer",
+          "description": "Planned session length in minutes"
+        },
+        "isCompleted": {
+          "type": "boolean",
+          "description": "Whether session is finished"
+        },
+        "isRecurring": {
+          "type": "boolean",
+          "description": "Whether this repeats"
+        },
+        "recurrenceRule": {
+          "type": "string",
+          "enum": ["NONE", "DAILY", "WEEKLY"],
+          "description": "Recurrence frequency"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Study notes or revision targets"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Last modified timestamp"
+        }
+      },
+      "required": ["id", "userId", "subject", "chapter", "scheduledDate", "scheduledTime", "durationMinutes", "isCompleted", "isRecurring", "recurrenceRule", "notes", "createdAt", "updatedAt"]
+    },
+    "FocusLog": {
+      "title": "FocusLog",
+      "description": "Record of a focus lock study session",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique log ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of owner"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject studied"
+        },
+        "targetMinutes": {
+          "type": "integer",
+          "description": "Target minutes set"
+        },
+        "actualMinutes": {
+          "type": "integer",
+          "description": "Actual minutes completed"
+        },
+        "blockedAppsCount": {
+          "type": "integer",
+          "description": "Number of distracting apps restricted"
+        },
+        "completed": {
+          "type": "boolean",
+          "description": "Whether goal was successfully met"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date of session in YYYY-MM-DD"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Creation timestamp"
+        }
+      },
+      "required": ["id", "userId", "subject", "targetMinutes", "actualMinutes", "blockedAppsCount", "completed", "date", "createdAt"]
+    },
+    "Quiz": {
+      "title": "Quiz",
+      "description": "AI-generated quiz from notes or textbook photos with scores",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique quiz ID"
+        },
+        "userId": {
+          "type": "string",
+          "description": "UID of owner"
+        },
+        "title": {
+          "type": "string",
+          "description": "Quiz title or chapter summary"
+        },
+        "subject": {
+          "type": "string",
+          "description": "Subject name"
+        },
+        "questionCount": {
+          "type": "integer",
+          "description": "Number of questions generated"
+        },
+        "score": {
+          "type": "integer",
+          "description": "Points earned"
+        },
+        "totalQuestions": {
+          "type": "integer",
+          "description": "Total question count"
+        },
+        "accuracy": {
+          "type": "integer",
+          "description": "Percentage score (0-100)"
+        },
+        "questionsJson": {
+          "type": "string",
+          "description": "JSON serialized quiz questions, options, user answers, and explanations"
+        },
+        "sourceType": {
+          "type": "string",
+          "enum": ["PHOTO", "TOPIC", "SAMPLE"],
+          "description": "Source origin of quiz material"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "Timestamp of quiz completion"
+        }
+      },
+      "required": ["id", "userId", "title", "subject", "questionCount", "score", "totalQuestions", "accuracy", "questionsJson", "sourceType", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile, study streak, and total focus minutes"
+    },
+    "/users/{userId}/sessions/{sessionId}": {
+      "schema": "StudySession",
+      "description": "Study timetable sessions and recurring schedules"
+    },
+    "/users/{userId}/focus_logs/{logId}": {
+      "schema": "FocusLog",
+      "description": "History of completed focus sessions and distraction blocking"
+    },
+    "/users/{userId}/quizzes/{quizId}": {
+      "schema": "Quiz",
+      "description": "Saved AI quizzes, scores, questions, and performance"
+    }
+  }
+}

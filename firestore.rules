@@ -1,0 +1,164 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    // Entity validation helpers
+    function isValidUserProfile(data) {
+      return data.userId is string && data.userId == request.auth.uid &&
+             data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 100 &&
+             data.email is string && data.email.size() >= 3 && data.email.size() <= 150 &&
+             (!('photoUrl' in data) || data.photoUrl == null || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+             data.streakDays is int && data.streakDays >= 0 &&
+             data.totalFocusMinutes is int && data.totalFocusMinutes >= 0 &&
+             data.totalQuizzesTaken is int && data.totalQuizzesTaken >= 0 &&
+             data.averageQuizScore is int && data.averageQuizScore >= 0 && data.averageQuizScore <= 100 &&
+             data.lastActiveDate is string && data.lastActiveDate.size() <= 20 &&
+             (!('coins' in data) || (data.coins is int && data.coins >= 0)) &&
+             (!('referralCode' in data) || (data.referralCode is string && data.referralCode.size() <= 32)) &&
+             (!('unlockedItems' in data) || (data.unlockedItems is list && data.unlockedItems.size() <= 50)) &&
+             (!('referredUsersCount' in data) || (data.referredUsersCount is int && data.referredUsersCount >= 0));
+    }
+
+    function isValidStudySession(data) {
+      return data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             data.chapter is string && data.chapter.size() <= 200 &&
+             data.scheduledDate is string && data.scheduledDate.size() <= 20 &&
+             data.scheduledTime is string && data.scheduledTime.size() <= 20 &&
+             data.durationMinutes is int && data.durationMinutes >= 1 && data.durationMinutes <= 1440 &&
+             data.isCompleted is bool &&
+             data.isRecurring is bool &&
+             data.recurrenceRule in ['NONE', 'DAILY', 'WEEKLY'] &&
+             data.notes is string && data.notes.size() <= 2000;
+    }
+
+    function isValidFocusLog(data) {
+      return data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             data.targetMinutes is int && data.targetMinutes >= 1 && data.targetMinutes <= 1440 &&
+             data.actualMinutes is int && data.actualMinutes >= 0 && data.actualMinutes <= 1440 &&
+             data.blockedAppsCount is int && data.blockedAppsCount >= 0 &&
+             data.completed is bool &&
+             data.date is string && data.date.size() <= 20;
+    }
+
+    function isValidQuiz(data) {
+      return data.id is string && data.id.size() >= 1 && data.id.size() <= 128 &&
+             data.userId is string && data.userId == request.auth.uid &&
+             data.title is string && data.title.size() >= 1 && data.title.size() <= 200 &&
+             data.subject is string && data.subject.size() >= 1 && data.subject.size() <= 100 &&
+             data.questionCount is int && data.questionCount >= 1 && data.questionCount <= 100 &&
+             data.score is int && data.score >= 0 &&
+             data.totalQuestions is int && data.totalQuestions >= 1 &&
+             data.accuracy is int && data.accuracy >= 0 && data.accuracy <= 100 &&
+             data.questionsJson is string && data.questionsJson.size() <= 500000 &&
+             data.sourceType in ['PHOTO', 'TOPIC', 'SAMPLE'];
+    }
+
+    // User Profile
+    match /users/{userId} {
+      allow get: if isOwner(userId) && isValidId(userId);
+      allow list: if false;
+
+      allow create: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == request.auth.uid &&
+                       incoming().keys().hasAll(['userId', 'displayName', 'email', 'streakDays', 'totalFocusMinutes', 'totalQuizzesTaken', 'averageQuizScore', 'lastActiveDate', 'createdAt', 'updatedAt']) &&
+                       incoming().keys().hasOnly(['userId', 'displayName', 'email', 'photoUrl', 'streakDays', 'totalFocusMinutes', 'totalQuizzesTaken', 'averageQuizScore', 'lastActiveDate', 'coins', 'referralCode', 'unlockedItems', 'referredUsersCount', 'createdAt', 'updatedAt']) &&
+                       incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming());
+
+      allow update: if isOwner(userId) && isValidId(userId) &&
+                       incoming().userId == existing().userId &&
+                       incoming().createdAt == existing().createdAt &&
+                       incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                       isValidUserProfile(incoming()) &&
+                       incoming().diff(existing()).affectedKeys().hasOnly(['displayName', 'photoUrl', 'streakDays', 'totalFocusMinutes', 'totalQuizzesTaken', 'averageQuizScore', 'lastActiveDate', 'coins', 'referralCode', 'unlockedItems', 'referredUsersCount', 'updatedAt']);
+
+      allow delete: if isOwner(userId) && isValidId(userId);
+
+      // Subcollection: Study Sessions
+      match /sessions/{sessionId} {
+        allow get: if isOwner(userId) && isValidId(sessionId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(sessionId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['id', 'userId', 'subject', 'chapter', 'scheduledDate', 'scheduledTime', 'durationMinutes', 'isCompleted', 'isRecurring', 'recurrenceRule', 'notes', 'createdAt', 'updatedAt']) &&
+                         incoming().keys().hasOnly(['id', 'userId', 'subject', 'chapter', 'scheduledDate', 'scheduledTime', 'durationMinutes', 'isCompleted', 'isRecurring', 'recurrenceRule', 'notes', 'createdAt', 'updatedAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidStudySession(incoming());
+
+        allow update: if isOwner(userId) && isValidId(sessionId) &&
+                         incoming().userId == existing().userId &&
+                         incoming().createdAt == existing().createdAt &&
+                         incoming().updatedAt is timestamp && incoming().updatedAt <= request.time &&
+                         isValidStudySession(incoming()) &&
+                         incoming().diff(existing()).affectedKeys().hasOnly(['subject', 'chapter', 'scheduledDate', 'scheduledTime', 'durationMinutes', 'isCompleted', 'isRecurring', 'recurrenceRule', 'notes', 'updatedAt']);
+
+        allow delete: if isOwner(userId) && isValidId(sessionId);
+      }
+
+      // Subcollection: Focus Logs
+      match /focus_logs/{logId} {
+        allow get: if isOwner(userId) && isValidId(logId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(logId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['id', 'userId', 'subject', 'targetMinutes', 'actualMinutes', 'blockedAppsCount', 'completed', 'date', 'createdAt']) &&
+                         incoming().keys().hasOnly(['id', 'userId', 'subject', 'targetMinutes', 'actualMinutes', 'blockedAppsCount', 'completed', 'date', 'createdAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidFocusLog(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(logId);
+      }
+
+      // Subcollection: Quizzes
+      match /quizzes/{quizId} {
+        allow get: if isOwner(userId) && isValidId(quizId);
+        allow list: if isOwner(userId);
+
+        allow create: if isOwner(userId) && isValidId(quizId) &&
+                         incoming().userId == request.auth.uid &&
+                         incoming().keys().hasAll(['id', 'userId', 'title', 'subject', 'questionCount', 'score', 'totalQuestions', 'accuracy', 'questionsJson', 'sourceType', 'createdAt']) &&
+                         incoming().keys().hasOnly(['id', 'userId', 'title', 'subject', 'questionCount', 'score', 'totalQuestions', 'accuracy', 'questionsJson', 'sourceType', 'createdAt']) &&
+                         incoming().createdAt is timestamp && incoming().createdAt <= request.time &&
+                         isValidQuiz(incoming());
+
+        allow update: if false;
+        allow delete: if isOwner(userId) && isValidId(quizId);
+      }
+    }
+  }
+}
